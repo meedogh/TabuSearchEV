@@ -10,10 +10,10 @@ def randomize(x,y,f=0):
 
 grid_size = 50
 
-car_num = 20
-station_num = 30
+car_num = 50
+station_num = 10
 charging_station_locations = [(random.randint(0, grid_size-1), random.randint(0, grid_size-1)) for _ in range(station_num)]
-car_locations = charging_station_locations #[(random.randint(0, grid_size-1), random.randint(0, grid_size-1)) for _ in range(car_num)]
+car_locations = [(random.randint(0, grid_size-1), random.randint(0, grid_size-1)) for _ in range(car_num)]
 
 min_hours = 1
 max_hours = 24
@@ -39,7 +39,7 @@ max_energy_consumption = 0.3
 min_travel_price = 0.01
 max_travel_price = 0.8
 
-queue_length = 0 
+queue_length = 50
 serving_rate = 1
 velocity = 80
 

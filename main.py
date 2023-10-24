@@ -12,7 +12,7 @@ for i, cs_location in enumerate(charging_station_locations):
         'peak_hours': randomize(min_hours,max_hours),
         'peak_hours_length': randomize(min_hours,max_hours),
         'price_peak_hours': randomize(min_price_peak, max_price_peak, 2),
-        'price_off_peak_hours': randomize(min_price_off_peak, max_price_off_peak, 2), 
+        'price_off_peak_hours': randomize(min_price_off_peak, max_price_off_peak, 2),
         'queue_length': queue_length,
         'serving_rate': serving_rate
     }
@@ -31,7 +31,9 @@ for i, ev_location in enumerate(car_locations):
         'travel_price': randomize(min_travel_price, max_travel_price, 2),
     }
     ev_parameters.append(ev_params)
-
+# cs_parameters[29]['queue_length'] *= 0.1
+# cs_parameters[28]['price_peak_hours'] *= 0.5
+# cs_parameters[28]['price_off_peak_hours'] *= 0.5
 
 for i, ev_params in enumerate(ev_parameters):
     print(f'EV {i+1} Parameters: {ev_params}')
@@ -84,28 +86,39 @@ def objective_function_cost(solution):
         total_cost += calc.Cost(d, v, cs_params['price_peak_hours'], cs_params['price_off_peak_hours'], peak, Bfull, Bv, Ptravel, e)
     return total_cost
 
+# def get_neighbors(solution):
+#     neighbors = []
+#     size = len(solution)
+#     for i in range(size):
+#         for j in range(station_num):
+#             neighbor = solution[:]
+#             neighbor[i] = j + 1
+#             neighbors.append(neighbor)
+#     return neighbors 
+
 
 def get_neighbors(solution):
     neighbors = []
-    num_stations = len(solution)
+    size = len(solution)
 
-    for i in range(num_stations):
-        for j in range(num_stations):
-            if i != j:
-                neighbor = solution[:]
-                neighbor[i] = j + 1
-                neighbors.append(neighbor)
+    for _ in range(10):
+        i = random.randint(0, size - 1)  
+        j = random.randint(1, station_num)  
+        neighbor = solution[:]  
+        neighbor[i] = j  
+        neighbors.append(neighbor)
 
     return neighbors
 
-def tabu_search(initial_solution, max_iterations, tabu_list_size, objective_function, max_iterations_without_improvement):
+def tabu_search(initial_solution, max_iterations, tabu_list_size, objective_function):
     current_solution = initial_solution
     best_solution = current_solution
     tabu_list = []
     history = []
-    iterations_since_improvement = 0
+    best = []
     
     for _ in range(max_iterations):
+        
         neighbors = get_neighbors(current_solution)
         best_neighbor = None
         best_neighbor_fitness = float('inf')
@@ -114,38 +127,32 @@ def tabu_search(initial_solution, max_iterations, tabu_list_size, objective_func
             if neighbor not in tabu_list:
                 neighbor_fitness = objective_function(neighbor)
                 if neighbor_fitness < best_neighbor_fitness:
+                    
                     best_neighbor_fitness = neighbor_fitness
                     best_neighbor = neighbor
+                history.append(objective_function(neighbor))
 
         if best_neighbor is None:
-            current_solution = [randomize(1, station_num) for _ in range(len(current_solution))]
-            iterations_since_improvement = 0
             continue
 
+        history.append(objective_function(current_solution))
         current_solution = best_neighbor
         tabu_list.append(current_solution) 
 
         if len(tabu_list) > tabu_list_size:
             tabu_list.pop(0) 
 
-        history.append(objective_function(current_solution))
 
         if best_neighbor_fitness < objective_function(best_solution):
             best_solution = best_neighbor
-            iterations_since_improvement = 0
-        else:
-            iterations_since_improvement += 1
+        best.append(objective_function(best_solution))
+    return best_solution, best, history
 
 
-        if iterations_since_improvement >= max_iterations_without_improvement:
-            current_solution = [randomize(1, station_num) for _ in range(len(current_solution))]
-            iterations_since_improvement = 0
-            
-    return best_solution, history
 
+best_time, tabu_time, time_history = tabu_search([ev['assigned_station'] for ev in ev_parameters], max_iterations, tabu_list_size, objective_function_time)
+best_cost, tabu_cost, cost_history = tabu_search([ev['assigned_station'] for ev in ev_parameters], max_iterations, tabu_list_size, objective_function_cost)
 
-best_time, time_history = tabu_search([ev['assigned_station'] for ev in ev_parameters], max_iterations, tabu_list_size, objective_function_time, 10)
-best_cost, cost_history = tabu_search([ev['assigned_station'] for ev in ev_parameters], max_iterations, tabu_list_size, objective_function_cost, 10)
 
 print(time_history)
 print(cost_history)
@@ -153,7 +160,7 @@ print(best_time)
 print(best_cost)
 
 
-fig, axs = plt.subplots(2,2,layout="constrained")
+fig, axs = plt.subplots(2,3,layout="constrained")
 
 def plot_map(ax, solution, title):
     ax.set_title(title)
@@ -199,5 +206,17 @@ axs[1,1].set_title("Cost Optimization")
 axs[0,1].legend()
 axs[1,1].legend()
 
-plt.savefig("test.jpg", dpi=140)
+axs[0,2].plot(tabu_time, label = 'Time', color='orange')
+axs[1,2].plot(tabu_cost, label = 'Cost')
+
+axs[0,2].grid(ls=":")
+axs[1,2].grid(ls=":")
+
+axs[0,2].set_title("Time Optimization Tabu")
+axs[1,2].set_title("Cost Optimization Tabu")
+
+axs[0,2].legend()
+axs[1,2].legend()
+
+plt.savefig("test.jpg", dpi=400)
 plt.show()
